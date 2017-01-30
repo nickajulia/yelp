@@ -71,12 +71,13 @@ GRANT_TYPE = 'client_credentials'
 
 
 # Defaults for our simple example.
+NUMBER_OF_RESULTS = 0 #placeholder for total results
 DEFAULT_TERM = 'cocktail bars'
 DEFAULT_CATEGORY = 'Home Cleaning'
 DEFAULT_LOCATION = 'San Francisco, CA'
 DEFAULT_SORT = 2
 SEARCH_LIMIT = 50
-SEARCH_OFFSET = SEARCH_LIMIT * 1
+SEARCH_OFFSET = 0
 #Default for google spreadsheets
 DEFAULT_SHEET = 'default'
 DEFAULT_GOOGLE_CREDENTIALS_FILENAME = 'client_secret.json'
@@ -154,7 +155,7 @@ def search(bearer_token, term, location):
     Returns:
         dict: The JSON response from the request.
     """
-
+    print("(SEARCH_OFFSET,NUMBER_OF_RESULTS) = (%s,%s)"%(SEARCH_OFFSET,NUMBER_OF_RESULTS))
     url_params = {
         'term': term.replace(' ', '+'),
         'location': location.replace(' ', '+'),
@@ -180,7 +181,7 @@ def get_business(bearer_token, business_id):
     return request(API_HOST, business_path, bearer_token)
 
 
-def query_api(term, location,filename):
+def query_api(term, location,filename,recursive=False):
     """Queries the API by the input values from the user.
 
     Args:
@@ -204,17 +205,18 @@ def query_api(term, location,filename):
     service = discovery.build('sheets', 'v4', http=http,
                               discoveryServiceUrl=discoveryUrl)
     headers = []
-    for k,v in sorted(businesses[0].iteritems()):
-        if k=='location':
-            headers.extend(['city','display_adress','zip_code','state'])
-        elif k=='categories':
-            headers.extend(['categories title'])
-        elif k=='image_url':
-            pass
-        else:
-            headers.append(k)
+    if not recursive:
+        for k,v in sorted(businesses[0].iteritems()):
+            if k=='location':
+                headers.extend(['city','display_adress','zip_code','state'])
+            elif k=='categories':
+                headers.extend(['categories title'])
+            elif k=='image_url':
+                pass
+            else:
+                headers.append(k)
 
-    append_to_google_spreadsheet(service,term,filename,headers)
+        append_to_google_spreadsheet(service,term,filename,headers)
     for business in businesses:
         ret = []
         for k,v in sorted(business.iteritems()):
@@ -236,6 +238,16 @@ def query_api(term, location,filename):
         #here is the call to more info on yelp, but they looks the same like the global api call so I would suggest we dont call that because of API limitations
         #bussnies_info = get_business(bearer_token,business['id'])
         append_to_google_spreadsheet(service,term,filename,ret)
+    global SEARCH_OFFSET
+    global SEARCH_LIMIT
+    global NUMBER_OF_RESULTS
+
+    SEARCH_OFFSET+=SEARCH_LIMIT
+    NUMBER_OF_RESULTS = response['total']
+    if SEARCH_OFFSET>response['total']:
+        return
+
+    query_api(term,location,filename,recursive=True)
 
 def append_to_google_spreadsheet(service,term,filename,row):
     time.sleep(1) #add sleep because of google api
