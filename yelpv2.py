@@ -229,7 +229,9 @@ def query_api(term, location,filename):
             elif k=='image_url':
                 pass
             else:
-                ret.append(str(v))
+                if type(v)==float or type(v)==dict or type(v)==bool or type(v)==int:
+                    v = str(v)
+                ret.append(str(v.encode('ascii', 'ignore').decode('ascii')))
 
         #here is the call to more info on yelp, but they looks the same like the global api call so I would suggest we dont call that because of API limitations
         #bussnies_info = get_business(bearer_token,business['id'])
