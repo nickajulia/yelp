@@ -33,6 +33,7 @@ import codecs
 from apiclient import discovery
 from oauth2client import client
 from oauth2client import tools
+import time
 
 
 
@@ -235,6 +236,8 @@ def query_api(term, location,filename):
         append_to_google_spreadsheet(service,term,filename,ret)
 
 def append_to_google_spreadsheet(service,term,filename,row):
+    time.sleep(1) #add sleep because of google api
+
     values =  [row]
     body ={'values':values}
     rangeName = "%s"%filename
